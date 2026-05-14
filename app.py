@@ -1,43 +1,59 @@
 import streamlit as st
 import torch
-import torchvision.models as models
-from torchvision import transforms
-from PIL import Image
+from transformers import pipeline
 
-st.title("Offshore Pipeline Corrosion Detector")
-st.write("Upload an image of a pipeline to check for corrosion levels.")
+# --- Page Configuration ---
+st.set_page_config(page_title="Corrosion Risk NLP", page_icon="📝")
 
-# Load Model Function
+# --- Title & Branding ---
+st.title("📝 Pipeline Integrity: NLP Report Analyzer")
+st.markdown("""
+**Project Objective:** Utilizing Natural Language Processing to analyze maintenance logs and detect the urgency of corrosion-related reports.
+""")
+st.write("---")
+
+# --- Load NLP Model ---
 @st.cache_resource
-def load_model():
-    model = models.resnet50(weights=None)
-    model.fc = torch.nn.Linear(model.fc.in_features, 3)
-    # Ensure corrosion_model.pth is in the same folder
-    model.load_state_dict(torch.load('corrosion_model.pth', map_location=torch.device('cpu')))
-    model.eval()
-    return model
+def load_nlp_pipeline():
+    # This model detects 'emotions' which we map to 'Urgency Levels'
+    return pipeline("text-classification", model="bhadresh-savani/distilbert-base-uncased-emotion")
 
-model = load_model()
-classes = ['Healthy', 'Mild Corrosion', 'Severe Corrosion']
+classifier = load_nlp_pipeline()
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+# --- User Interface ---
+st.subheader("Enter Technician Maintenance Log")
+user_text = st.text_area("Example: 'Found severe pitting on the offshore joint. Requires immediate attention!'", 
+                         placeholder="Paste the report text here...")
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption='Uploaded Image', use_column_width=True)
-    
-    # Preprocess
-    preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-    ])
-    img_tensor = preprocess(image).unsqueeze(0)
+if st.button("Analyze Report Urgency"):
+    if user_text.strip() != "":
+        # Prediction
+        results = classifier(user_text)
+        label = results[0]['label']
+        score = results[0]['score'] * 100
 
-    # Predict
-    with torch.no_grad():
-        output = model(img_tensor)
-        _, predicted = torch.max(output, 1)
-        status = classes[predicted.item()]
+        # --- Mapping Emotion to Corrosion Urgency ---
+        # We relate NLP 'emotions' to technical 'integrity risks'
+        urgency_map = {
+            "fear": "🚨 HIGH URGENCY: Report suggests safety concerns.",
+            "anger": "⚠️ CRITICAL: Report indicates frustration with asset failure.",
+            "sadness": "📉 CONCERN: Report indicates structural degradation.",
+            "joy": "✅ STABLE: Report indicates successful maintenance.",
+            "surprise": "🔍 INVESTIGATE: Unusual findings reported.",
+            "love": "✅ OPTIMAL: Asset performing well."
+        }
+
+        status = urgency_map.get(label, "Checking integrity...")
+
+        # --- Display Results ---
+        st.info(f"**NLP Analysis:** The tone of this report is categorized as **{label.upper()}**.")
+        st.subheader(status)
+        st.write(f"**System Confidence:** {score:.2f}%")
         
-    st.subheader(f"Prediction: {status}")
+        # Actionable advice for Seplat/NCDMB context
+        if label in ['fear', 'anger', 'sadness']:
+            st.error("RECOMMENDATION: Schedule an immediate physical inspection (Computer Vision check).")
+        else:
+            st.success("RECOMMENDATION: Continue with standard monitoring schedule.")
+    else:
+        st.info("Please enter the text of a maintenance log to analyze.")
