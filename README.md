@@ -1,3 +1,5 @@
+**Live Demo:** [Click here to view the Active App](https://corrosion-identification-c4qhyiu68ftkwhousbfvhz.streamlit.app/)
+
 🏗️ AI-Driven Pipeline Integrity & Risk Analyzer
 
 Project Overview
