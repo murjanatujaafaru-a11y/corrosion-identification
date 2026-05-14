@@ -1,0 +1,7 @@
+image_path,label
+data/healthy_01.jpg,0
+data/healthy_02.jpg,0
+data/mild_corrosion_01.jpg,1
+data/mild_corrosion_02.jpg,1
+data/severe_corrosion_01.jpg,2
+data/severe_corrosion_02.jpg,2
